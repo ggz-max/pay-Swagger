@@ -5,6 +5,7 @@ coverage/
 playwright-report/
 test-results/
 *.log
+*.tsbuildinfo
 .env
 .env.local
 apps/api/prisma/*.db
