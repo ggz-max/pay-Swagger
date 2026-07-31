@@ -17,6 +17,7 @@ export DEMO_OAUTH_REDIRECT_URI="http://49.232.198.140/pay-swagger/admin/oauth/ca
 cd "$APP_DIR"
 
 mkdir -p "$DATA_DIR"
+sudo env PATH="/opt/node24/bin:$PATH" corepack enable pnpm
 corepack pnpm install --frozen-lockfile
 corepack pnpm db:generate
 corepack pnpm db:push
