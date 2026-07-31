@@ -1,0 +1,536 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String             @id @default(uuid())
+  displayName        String
+  mobile             String?            @unique
+  email              String?            @unique
+  status             String             @default("ACTIVE")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  externalIdentities ExternalIdentity[]
+  orders             Order[]
+  entitlements       UserEntitlement[]
+  subscriptions      Subscription[]
+  oauthGrants        OAuthGrant[]
+  ownedApps          OpenPlatformApp[]  @relation("OwnedApps")
+  sessions           UserSession[]
+  authorizationCodes OAuthAuthorizationCode[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ExternalIdentity {
+  id              String   @id @default(uuid())
+  userId          String
+  provider        String
+  providerSubject String
+  profileSnapshot String?
+  status          String   @default("BOUND")
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerSubject])
+  @@index([userId])
+  @@index([status])
+}
+
+model OpenPlatformApp {
+  id               String                   @id @default(uuid())
+  ownerUserId      String
+  clientId         String                   @unique
+  clientSecretHash String
+  name             String
+  redirectUris     String
+  allowedScopes    String
+  status           String                   @default("DRAFT")
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  owner            User                     @relation("OwnedApps", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  grants           OAuthGrant[]
+  authorizationCodes OAuthAuthorizationCode[]
+
+  @@index([ownerUserId])
+  @@index([status])
+}
+
+model OAuthGrant {
+  id                 String                   @id @default(uuid())
+  appId              String
+  userId             String
+  scopes             String
+  status             String                   @default("ACTIVE")
+  grantedAt          DateTime                 @default(now())
+  revokedAt          DateTime?
+  app                OpenPlatformApp          @relation(fields: [appId], references: [id], onDelete: Restrict)
+  user               User                     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  accessTokens       AccessToken[]
+  authorizationCodes OAuthAuthorizationCode[]
+
+  @@index([appId])
+  @@index([userId])
+  @@index([status])
+}
+
+model AccessToken {
+  id               String    @id @default(uuid())
+  grantId          String
+  tokenHash        String    @unique
+  refreshTokenHash String?   @unique
+  scopes           String
+  status           String    @default("ACTIVE")
+  expiresAt        DateTime
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
+  grant            OAuthGrant @relation(fields: [grantId], references: [id], onDelete: Restrict)
+
+  @@index([grantId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model UserSession {
+  id               String    @id @default(uuid())
+  userId           String
+  sessionTokenHash String    @unique
+  status           String    @default("ACTIVE")
+  expiresAt        DateTime
+  lastSeenAt       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model OAuthAuthorizationCode {
+  id                  String          @id @default(uuid())
+  codeHash            String          @unique
+  appId               String
+  userId              String
+  grantId             String
+  redirectUri         String
+  scopes              String
+  codeChallenge       String
+  codeChallengeMethod String          @default("S256")
+  nonce               String?
+  status              String          @default("ACTIVE")
+  expiresAt           DateTime
+  usedAt              DateTime?
+  createdAt           DateTime        @default(now())
+  app                 OpenPlatformApp @relation(fields: [appId], references: [id], onDelete: Restrict)
+  user                User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  grant               OAuthGrant      @relation(fields: [grantId], references: [id], onDelete: Restrict)
+
+  @@index([appId])
+  @@index([userId])
+  @@index([grantId])
+  @@index([status, expiresAt])
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  type        String
+  name        String
+  description String
+  status      String   @default("DRAFT")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  skus        Sku[]
+
+  @@index([type])
+  @@index([status])
+}
+
+model Sku {
+  id            String    @id @default(uuid())
+  productId     String
+  code          String    @unique
+  name          String
+  billingType   String    @default("ONE_TIME")
+  priceMinor    Int
+  currency      String    @default("CNY")
+  saleStatus    String    @default("ON_SALE")
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  entitlementRules SkuEntitlementRule[]
+  orderItems    OrderItem[]
+  subscriptions Subscription[]
+
+  @@index([productId])
+  @@index([billingType])
+  @@index([saleStatus])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model EntitlementDefinition {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  type         String
+  unit         String
+  stackingRule String
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  skuRules     SkuEntitlementRule[]
+  userEntitlements UserEntitlement[]
+
+  @@index([type])
+  @@index([status])
+}
+
+model SkuEntitlementRule {
+  id                      String                @id @default(uuid())
+  skuId                   String
+  entitlementDefinitionId String
+  grantValue              Int
+  grantTiming             String                @default("AFTER_PAYMENT")
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  sku                     Sku                   @relation(fields: [skuId], references: [id], onDelete: Restrict)
+  entitlementDefinition   EntitlementDefinition @relation(fields: [entitlementDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([skuId, entitlementDefinitionId])
+  @@index([skuId])
+  @@index([entitlementDefinitionId])
+}
+
+model Order {
+  id                  String    @id @default(uuid())
+  orderNo             String    @unique
+  userId              String
+  subscriptionId      String?
+  orderType           String    @default("PURCHASE")
+  status              String    @default("PENDING_PAYMENT")
+  originalAmountMinor Int
+  payableAmountMinor  Int
+  currency            String    @default("CNY")
+  closeReason         String?
+  expiresAt           DateTime
+  paidAt              DateTime?
+  fulfilledAt         DateTime?
+  refundedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  subscription        Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Restrict)
+  items               OrderItem[]
+  paymentAttempts     PaymentAttempt[]
+  refunds             Refund[]
+  traceEvents         TransactionTraceEvent[]
+  exceptionCases      ExceptionCase[]
+
+  @@index([userId, createdAt])
+  @@index([subscriptionId])
+  @@index([status, updatedAt])
+  @@index([expiresAt])
+}
+
+model OrderItem {
+  id                     String   @id @default(uuid())
+  orderId                String
+  skuId                  String
+  skuCodeSnapshot        String
+  skuNameSnapshot        String
+  unitPriceMinorSnapshot Int
+  quantity               Int      @default(1)
+  lineAmountMinor        Int
+  currencySnapshot       String
+  entitlementSnapshot    String
+  createdAt              DateTime @default(now())
+  order                  Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  sku                    Sku      @relation(fields: [skuId], references: [id], onDelete: Restrict)
+  entitlements           UserEntitlement[]
+
+  @@index([orderId])
+  @@index([skuId])
+}
+
+model PaymentAttempt {
+  id                String    @id @default(uuid())
+  orderId           String
+  merchantTradeNo   String    @unique
+  provider          String
+  method            String
+  providerTradeNo   String?   @unique
+  amountMinor       Int
+  currency          String
+  status            String    @default("CREATED")
+  failureCode       String?
+  providerErrorCode String?
+  idempotencyKey    String    @unique
+  providerPaidAt    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  events            PaymentEvent[]
+  refunds           Refund[]
+  reconciliationRecords ReconciliationRecord[]
+
+  @@index([orderId, createdAt])
+  @@index([provider])
+  @@index([status])
+  @@index([failureCode])
+}
+
+model PaymentEvent {
+  id                 String          @id @default(uuid())
+  provider           String
+  providerEventId    String
+  paymentAttemptId   String?
+  eventType          String
+  signatureStatus    String          @default("PENDING")
+  processingStatus   String          @default("PENDING")
+  rawPayloadRedacted String
+  errorCode          String?
+  receivedAt         DateTime        @default(now())
+  processedAt        DateTime?
+  paymentAttempt     PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id], onDelete: Restrict)
+
+  @@unique([provider, providerEventId])
+  @@index([paymentAttemptId])
+  @@index([eventType])
+  @@index([signatureStatus])
+  @@index([processingStatus])
+  @@index([receivedAt])
+}
+
+model UserEntitlement {
+  id                      String                @id @default(uuid())
+  userId                  String
+  entitlementDefinitionId String
+  sourceOrderItemId       String
+  status                  String                @default("PENDING")
+  validFrom               DateTime?
+  validTo                 DateTime?
+  remainingBalance        Int?
+  version                 Int                   @default(0)
+  lastErrorCode           String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  entitlementDefinition   EntitlementDefinition @relation(fields: [entitlementDefinitionId], references: [id], onDelete: Restrict)
+  sourceOrderItem         OrderItem             @relation(fields: [sourceOrderItemId], references: [id], onDelete: Restrict)
+  ledgers                 EntitlementLedger[]
+
+  @@index([userId, status])
+  @@index([entitlementDefinitionId])
+  @@index([sourceOrderItemId])
+  @@index([validTo])
+  @@index([lastErrorCode])
+}
+
+model EntitlementLedger {
+  id                String          @id @default(uuid())
+  userEntitlementId String
+  operation         String
+  delta             Int
+  beforeValue       Int?
+  afterValue        Int?
+  sourceType        String
+  sourceId          String
+  idempotencyKey    String          @unique
+  operatorId        String?
+  reason            String?
+  createdAt         DateTime        @default(now())
+  userEntitlement   UserEntitlement @relation(fields: [userEntitlementId], references: [id], onDelete: Restrict)
+
+  @@index([userEntitlementId, createdAt])
+  @@index([operation])
+  @@index([sourceType, sourceId])
+}
+
+model Subscription {
+  id                     String    @id @default(uuid())
+  userId                 String
+  skuId                  String
+  provider               String?
+  providerSubscriptionId String?   @unique
+  status                 String    @default("ACTIVE")
+  currentPeriodStart     DateTime
+  currentPeriodEnd       DateTime
+  nextBillingAt          DateTime?
+  cancelAtPeriodEnd      Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sku                    Sku       @relation(fields: [skuId], references: [id], onDelete: Restrict)
+  orders                 Order[]
+
+  @@index([userId])
+  @@index([skuId])
+  @@index([status])
+  @@index([nextBillingAt])
+}
+
+model Refund {
+  id                      String         @id @default(uuid())
+  refundNo                String         @unique
+  orderId                 String
+  paymentAttemptId        String
+  providerRefundNo        String?        @unique
+  amountMinor             Int
+  currency                String
+  reasonCode              String
+  reasonNote              String?
+  initiatorType           String
+  initiatorId             String
+  status                  String         @default("REQUESTED")
+  entitlementActionStatus String         @default("PENDING")
+  idempotencyKey          String         @unique
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  succeededAt             DateTime?
+  order                   Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentAttempt          PaymentAttempt @relation(fields: [paymentAttemptId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([paymentAttemptId])
+  @@index([status])
+  @@index([entitlementActionStatus])
+  @@index([initiatorType, initiatorId])
+}
+
+model ReconciliationRecord {
+  id                  String          @id @default(uuid())
+  provider            String
+  statementDate       DateTime
+  statementLineKey    String          @unique
+  paymentAttemptId    String?
+  merchantTradeNo     String?
+  providerTradeNo     String?
+  expectedAmountMinor Int?
+  actualAmountMinor   Int?
+  differenceType      String          @default("NONE")
+  status              String          @default("PENDING")
+  resolutionNote      String?
+  operatorId          String?
+  createdAt           DateTime        @default(now())
+  resolvedAt          DateTime?
+  paymentAttempt      PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id], onDelete: Restrict)
+
+  @@index([provider, statementDate])
+  @@index([paymentAttemptId])
+  @@index([merchantTradeNo])
+  @@index([providerTradeNo])
+  @@index([differenceType])
+  @@index([status])
+}
+
+model TransactionTraceEvent {
+  id              String   @id @default(uuid())
+  orderId         String?
+  eventType       String
+  actorType       String
+  actorId         String?
+  correlationId   String
+  sourceType      String?
+  sourceId        String?
+  summary         String
+  payloadRedacted String?
+  occurredAt      DateTime @default(now())
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, occurredAt])
+  @@index([eventType])
+  @@index([actorType, actorId])
+  @@index([correlationId])
+  @@index([sourceType, sourceId])
+}
+
+model ExceptionCase {
+  id             String    @id @default(uuid())
+  orderId        String?
+  sourceType     String
+  sourceId       String
+  exceptionCode  String
+  severity       String
+  status         String    @default("DETECTED")
+  retryCount     Int       @default(0)
+  nextRetryAt    DateTime?
+  lastErrorCode  String?
+  assigneeId     String?
+  resolutionCode String?
+  resolutionNote String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  resolvedAt     DateTime?
+  order          Order?    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([sourceType, sourceId])
+  @@index([exceptionCode])
+  @@index([severity, status, createdAt])
+  @@index([nextRetryAt])
+  @@index([assigneeId])
+}
+
+model IdempotencyRecord {
+  id               String    @id @default(uuid())
+  scope            String
+  idempotencyKey   String
+  requestHash      String
+  resourceType     String?
+  resourceId       String?
+  responseSnapshot String?
+  status           String    @default("PROCESSING")
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@unique([scope, idempotencyKey])
+  @@index([resourceType, resourceId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model OutboxEvent {
+  id            String    @id @default(uuid())
+  aggregateType String
+  aggregateId   String
+  eventType     String
+  payload       String
+  status        String    @default("PENDING")
+  attemptCount  Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+
+  @@index([aggregateType, aggregateId])
+  @@index([eventType])
+  @@index([status, nextAttemptAt])
+}
+
+model JobTask {
+  id            String    @id @default(uuid())
+  jobType       String
+  businessKey   String
+  payload       String
+  status        String    @default("PENDING")
+  attemptCount  Int       @default(0)
+  maxAttempts   Int       @default(4)
+  nextRunAt     DateTime  @default(now())
+  lockedAt      DateTime?
+  lastErrorCode String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([jobType, businessKey])
+  @@index([status, nextRunAt])
+  @@index([lastErrorCode])
+}
