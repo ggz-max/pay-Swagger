@@ -125,20 +125,17 @@ function OpenPlatformLab() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const verifier = "monetizelab-demo-pkce-verifier-2026-secure-value";
+  const codeChallenge = "KqjBq3861DpOin0-mkE-8uMdGij1x3dXJNeEqUn-MaU";
   const state = "csrf-state-demo-2026";
 
   useEffect(() => { void api.oauthContext().then(setContext).catch((reason: Error) => setError(reason.message)); }, []);
   const app = context?.apps[0];
 
-  const challenge = async () => {
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-    return btoa(String.fromCharCode(...new Uint8Array(digest))).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-  };
   const authorize = async () => {
     if (!context || !app) return;
     setBusy(true); setError("");
     try {
-      const result = await api.oauthAuthorize({ clientId: app.clientId, userId: context.user.id, redirectUri: app.redirectUris, scopes: "openid profile entitlements.read", state, codeChallenge: await challenge(), nonce: "nonce-demo-2026" });
+      const result = await api.oauthAuthorize({ clientId: app.clientId, userId: context.user.id, redirectUri: app.redirectUris, scopes: "openid profile entitlements.read", state, codeChallenge, nonce: "nonce-demo-2026" });
       setCode(result.code); setChecks(result.securityChecks); setStage("AUTHORIZED");
     } catch (reason) { setError((reason as Error).message); } finally { setBusy(false); }
   };

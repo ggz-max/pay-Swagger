@@ -2,6 +2,11 @@ import type { Bootstrap, Order, PaymentAttempt } from "./types";
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:3000/api/v1";
 
+function idempotencyKey(prefix: string) {
+  const randomPart = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${randomPart}`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
@@ -20,11 +25,11 @@ export const api = {
   order: (id: string) => request<Order>(`/orders/${id}`),
   createOrder: (userId: string, skuId: string) => request<Order>("/orders", {
     method: "POST",
-    body: JSON.stringify({ userId, skuId, idempotencyKey: `web-order-${crypto.randomUUID()}` }),
+    body: JSON.stringify({ userId, skuId, idempotencyKey: idempotencyKey("web-order") }),
   }),
   createPayment: (orderId: string) => request<PaymentAttempt>(`/orders/${orderId}/payment-attempts`, {
     method: "POST",
-    body: JSON.stringify({ idempotencyKey: `web-payment-${crypto.randomUUID()}`, method: "QR_CODE" }),
+    body: JSON.stringify({ idempotencyKey: idempotencyKey("web-payment"), method: "QR_CODE" }),
   }),
   completePayment: (paymentId: string, outcome: string) => request<{ duplicate: boolean; order: Order }>(`/payment-attempts/${paymentId}/mock-complete`, {
     method: "POST",
@@ -32,7 +37,7 @@ export const api = {
   }),
   refund: (orderId: string) => request<Order>(`/orders/${orderId}/refunds`, {
     method: "POST",
-    body: JSON.stringify({ idempotencyKey: `web-refund-${crypto.randomUUID()}`, reason: "演示用户申请退款" }),
+    body: JSON.stringify({ idempotencyKey: idempotencyKey("web-refund"), reason: "演示用户申请退款" }),
   }),
   reset: () => request<{ reset: boolean }>("/demo/reset", { method: "POST" }),
 };

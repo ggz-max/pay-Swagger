@@ -23,6 +23,17 @@
 - [面试展示策略](文档/03-面试材料/01-面试展示策略.md)
 - [面试演示与追问手册](文档/03-面试材料/02-面试演示与追问手册.md)
 - [项目验收报告](文档/03-面试材料/03-项目验收报告.md)
+- [服务器部署说明](deployment/部署说明.md)
+
+## 线上演示
+
+- GitHub：https://github.com/ggz-max/pay-Swagger
+- 用户端：http://49.232.198.140/pay-swagger/
+- 运营台：http://49.232.198.140/pay-swagger/admin/
+- Swagger：http://49.232.198.140/pay-swagger/docs/
+- API 健康检查：http://49.232.198.140/pay-swagger/api/v1/health
+
+线上环境仅用于学习和面试演示，使用支付模拟器与演示数据，不处理真实资金、真实用户信息或真实支付密钥。当前使用服务器 IP 的 HTTP 访问，未配置域名与 HTTPS。
 
 ## 文档沉淀约定
 
@@ -47,6 +58,7 @@ packages/
 └─ contracts/       前后端共享状态、类型和展示映射
 tests/
 └─ e2e/             Playwright 端到端验证
+deployment/          PM2、Nginx、部署与线上验收脚本
 ```
 
 ## 本地启动
