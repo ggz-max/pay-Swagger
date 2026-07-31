@@ -71,6 +71,37 @@ try {
     errors,
   });
   await context.close();
+
+  const oauthContext = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: "zh-CN" });
+  const oauthPage = await oauthContext.newPage();
+  const oauthErrors = [];
+  oauthPage.on("console", (message) => {
+    if (message.type() === "error") oauthErrors.push(`console: ${message.text()}`);
+  });
+  oauthPage.on("pageerror", (error) => oauthErrors.push(`page: ${error.message}`));
+  oauthPage.on("response", (response) => {
+    if (response.status() >= 400) oauthErrors.push(`http ${response.status()}: ${response.url()}`);
+  });
+
+  const oauthResponse = await oauthPage.goto(`${baseUrl}/admin/`, { waitUntil: "networkidle" });
+  await oauthPage.getByRole("button", { name: "开放平台" }).click();
+  await oauthPage.getByRole("heading", { name: "开放平台认证实验台" }).waitFor({ state: "visible" });
+  await oauthPage.getByRole("button", { name: /模拟用户同意授权/ }).click();
+  await oauthPage.getByRole("button", { name: /后端用 code/ }).click();
+  await oauthPage.getByRole("button", { name: /访问 UserInfo/ }).click();
+  await oauthPage.getByText(/demo-user/).waitFor({ state: "visible" });
+  await oauthPage.getByRole("button", { name: /撤销 Access Token/ }).click();
+  await oauthPage.getByText("Token 已撤销").waitFor({ state: "visible" });
+  const oauthScreenshot = path.join(outputDir, "线上OAuth-PKCE闭环.png");
+  await oauthPage.screenshot({ path: oauthScreenshot, fullPage: true });
+  results.push({
+    name: "线上OAuth-PKCE闭环",
+    status: oauthResponse?.status(),
+    title: await oauthPage.title(),
+    screenshot: oauthScreenshot,
+    errors: oauthErrors,
+  });
+  await oauthContext.close();
 } finally {
   await browser.close();
 }

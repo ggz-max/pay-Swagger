@@ -91,7 +91,7 @@ function App() {
       </header>
 
       <div className="context-bar">
-        <span><ShieldCheck size={16} /> 本地演示环境</span>
+        <span><ShieldCheck size={16} /> 沙盘演示环境</span>
         <span>资金事实、权益履约与异常补偿均可追踪</span>
         <button onClick={() => void reset()} disabled={busy} title="清空交易演示数据"><RotateCcw size={15} /> 重置演示</button>
       </div>
@@ -186,4 +186,3 @@ function Result({ order, busy, onRefresh, onRefund, onDone }: { order: Order; bu
 function Empty({ text }: { text: string }) { return <div className="empty"><PackageCheck size={30} /><p>{text}</p></div>; }
 
 createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);
-

@@ -53,7 +53,7 @@ function App() {
         <NavButton active={view === "open-platform"} onClick={() => { setView("open-platform"); setSelected(undefined); }} icon={<Webhook />} label="开放平台" />
         <NavButton icon={<Settings2 />} label="渠道配置" disabled />
       </nav>
-      <div className="environment"><span /><div><b>DEMO · LOCAL</b><small>API 连接正常</small></div></div>
+      <div className="environment"><span /><div><b>DEMO · SANDBOX</b><small>API 连接正常</small></div></div>
     </aside>
     <div className="workspace">
       <header><div><b>{selected ? "统一交易详情" : view === "overview" ? "业务概览" : view === "orders" ? "订单中心" : view === "exceptions" ? "异常中心" : "开放平台"}</b><small>资金、订单与权益状态独立核对</small></div><div className="header-actions"><button onClick={() => void load()} title="刷新数据"><RefreshCw className={busy ? "spin" : ""} /></button><span>运营演示账号</span><i>OP</i></div></header>
@@ -162,7 +162,7 @@ function OpenPlatformLab() {
   const stages = ["READY", "AUTHORIZED", "TOKEN", "USERINFO"];
   const stageIndex = stage === "REVOKED" ? 4 : stages.indexOf(stage);
   return <>
-    <section className="section-heading"><div><p>OAUTH 2.0 · AUTHORIZATION CODE + PKCE</p><h1>开放平台认证实验台</h1><span>模拟第三方应用申请授权、换取 Token、访问用户信息和撤销凭证。</span></div><div className="live"><i />本地协议演示</div></section>
+    <section className="section-heading"><div><p>OAUTH 2.0 · AUTHORIZATION CODE + PKCE</p><h1>开放平台认证实验台</h1><span>模拟第三方应用申请授权、换取 Token、访问用户信息和撤销凭证。</span></div><div className="live"><i />协议沙盘演示</div></section>
     {error && <div className="error"><AlertTriangle />{error}</div>}
     <section className="oauth-steps">
       {["发起授权", "返回授权码", "换取 Token", "访问资源"].map((label, index) => <div className={stageIndex >= index ? "done" : ""} key={label}><span>{stageIndex > index ? "✓" : index + 1}</span><b>{label}</b></div>)}
