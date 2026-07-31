@@ -86,6 +86,7 @@ try {
   const oauthResponse = await oauthPage.goto(`${baseUrl}/admin/`, { waitUntil: "networkidle" });
   await oauthPage.getByRole("button", { name: "开放平台" }).click();
   await oauthPage.getByRole("heading", { name: "开放平台认证实验台" }).waitFor({ state: "visible" });
+  await oauthPage.getByText("monetizelab_demo_client", { exact: true }).waitFor({ state: "visible" });
   await oauthPage.getByRole("button", { name: /模拟用户同意授权/ }).click();
   await oauthPage.getByRole("button", { name: /后端用 code/ }).click();
   await oauthPage.getByRole("button", { name: /访问 UserInfo/ }).click();
